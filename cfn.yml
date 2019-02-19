@@ -1,0 +1,195 @@
+  
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub repository owner
+  GitHubRepo:
+    Type: String
+    Default: medium-aws-check
+    Description: GitHub repository name
+  GitHubBranch:
+    Type: String
+    Default: master
+    Description: GitHub repository branch
+  GitHubToken:
+    Type: String
+    NoEcho : true,
+    Description: GitHub repository OAuth token
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Check Cloudformation GitHub Configuration
+      Parameters:
+      - GitHubOwner
+      - GitHubRepo
+      - GitHubBranch
+      - GitHubToken
+
+    ParameterLabels:
+      GitHubOwner:
+        default: My GitHub Account Name
+      GitHubRepo:
+        default: My GitHub Repository Name
+      GitHubBranch:
+        default: My GitHub Repository Branch
+      GitHubToken:
+        default: My GitHub Repository Secret Token
+
+Resources:
+  CheckPipelineArtifactS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  CheckCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: Check-CodePipeline
+      RoleArn: !GetAtt CheckCodePipelineRole.Arn
+      ArtifactStore:
+        Location: !Ref CheckPipelineArtifactS3Bucket
+        Type: S3
+      Stages:
+      - Name: Source
+        Actions:
+        - Name: Source
+          ActionTypeId:
+            Category: Source
+            Owner: ThirdParty
+            Version: 1
+            Provider: GitHub
+          Configuration:
+            Owner: !Ref GitHubOwner
+            Repo: !Ref GitHubRepo
+            Branch: !Ref GitHubBranch
+            OAuthToken: !Ref GitHubToken
+          OutputArtifacts: [Name: Template]
+          RunOrder: 1
+        - Name: Build
+          Actions:
+              - Name: CodeBuild
+                InputArtifacts:
+                  - Name: SourceApp
+                ActionTypeId:
+                  Category: Build
+                  Owner: AWS
+                  Version: '1'
+                  Provider: CodeBuild
+                OutputArtifacts:
+                  - Name: BuiltApp
+                Configuration:
+                  ProjectName: !Ref CheckCodeBuild
+           
+  CheckCodeBuild:
+      Type: AWS::CodeBuild::Project
+      Properties:
+          Name: Check-CodeBuild
+          ServiceRole: !GetAtt CheckCodeBuildRole.Arn
+          Source:
+              Type: CODEPIPELINE
+              BuildSpec: "version: 0.2\nphases:\n  install:\n    commands:\n      - export current=`pwd`\n      - if [ -f manifest.yaml ];then export current=`pwd`;else if [ -f manifest.yaml ]; then export current=`pwd`/;	else echo 'manifest.yaml does not exist at the root level of aws-Check-configuration.zip or inside aws-Check-configuration folder, please check the ZIP file'; exit 1;	fi; fi;\n      - apt-add-repository ppa:brightbox/ruby-ng\n      - apt-get update && apt-get upgrade -y\n      - apt-get install zip wget python-pip libyaml-dev ruby2.2 rsync -y\n      - which python && python --version\n      - which python3 && python3 --version\n      - which pip && pip --version\n      - pip install --upgrade pip==18.0\n      - pip install --upgrade setuptools\n      - pip install --upgrade virtualenv\n      - pip install --upgrade PyYAML\n      - pip install --upgrade yorm\n      - pip install --upgrade jinja2\n      - pip install --upgrade boto3\n      - pip install --upgrade pyyaml\n      - pip install --upgrade pykwalify\n      - pip install cfn_flip\n      - pip freeze\n      - gem install cfn-nag\n  pre_build:\n    commands:\n      - cd $current\n      - echo 'Download the Validation scripts'\n      - aws s3 cp s3://orgy-bucket/aws-Check-validation.zip $current\n      - unzip -o $current/aws-Check-validation.zip -d $current\n      - cp bin/lz_scripts/* .\n  build:\n    commands:\n      - echo 'Starting build `date` in `pwd`'\n      - echo 'bash merge_directories.sh $LAMBDA_ARN_SSM_PS_KEY'\n      - bash merge_directories.sh $LAMBDA_ARN_SSM_PS_KEY\n      - echo 'Executing validation tests'\n      - echo 'bash $current/validation/run-validation.sh $ARTIFACT_BUCKET'\n      - bash $current/validation/run-validation.sh $ARTIFACT_BUCKET\n      - echo 'Installing validation tests completed `date`'\n      - echo 'Source Dist completed `date`'\n  post_build:\n    commands:\n      - echo 'Starting post build `date` in `pwd`'\n      - echo 'build completed on `date`'\n      - echo 'Printing Merge Report'\n      - cat merge_report.txt\nartifacts:\n  files:\n      - '**/*'"
+          Environment:
+              ComputeType: BUILD_GENERAL1_SMALL
+              Image: "aws/codebuild/python:3.6.5"
+              Type: LINUX_CONTAINER
+              EnvironmentVariables:
+                  - Name: ARTIFACT_BUCKET
+                    Value: !Ref CheckPipelineArtifactS3Bucket
+          Artifacts:
+              Name: !Sub ${CheckPipelineArtifactS3Bucket}-Built
+              Type: CODEPIPELINE
+
+  CheckCodeBuildRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "AWS-Check-CodeBuild-Policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+              - Effect: "Allow"
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub "arn:aws:s3:::${CheckPipelineArtifactS3Bucket}/*"
+              - Effect: Allow
+                Action:
+                  - s3:*
+                  - cloudformation:ValidateTemplate
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub "arn:aws:s3:::orgy-bucket/*"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParametersByPath
+                  - ssm:DescribeParameters
+                Resource: '*'
+
+  CheckCodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CheckCodePipelineRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "CheckPipeline-Policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub "arn:aws:s3:::${CheckPipelineArtifactS3Bucket}"
+              - Effect: "Allow"
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub "arn:aws:s3:::${CheckPipelineArtifactS3Bucket}/*"
+              - Effect: "Allow"
+                Action:
+                  - "codebuild:BatchGetBuilds"
+                  - "codebuild:StartBuild"
+                Resource:
+                  - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${CheckCodeBuild}"
+              - Effect: "Allow"
+                Action:
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:UploadArchive
+                  - codecommit:GetUploadArchiveStatus
+                  - codecommit:CancelUploadArchive
+                Resource: "*"
