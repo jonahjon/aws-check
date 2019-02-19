@@ -3,7 +3,6 @@ phases:
   install:
     commands:
       - export current=`pwd`
-      - if [ -f manifest.yaml ];then export current=`pwd`;else if [ -f manifest.yaml ]; then export current=`pwd`/;	else echo 'manifest.yaml does not exist at the root level of aws-landing-zone-configuration.zip or inside aws-landing-zone-configuration folder, please check the ZIP file'; exit 1;	fi; fi;
       - apt-add-repository ppa:brightbox/ruby-ng
       - apt-get update && apt-get upgrade -y
       - apt-get install zip wget python-pip libyaml-dev ruby2.2 rsync -y
@@ -18,16 +17,12 @@ phases:
       - pip install --upgrade jinja2
       - pip install --upgrade boto3
       - pip install --upgrade pyyaml
-      - pip install --upgrade pykwalify
       - pip install cfn_flip
       - pip freeze
       - gem install cfn-nag
   pre_build:
     commands:
       - cd $current
-      - echo 'Download the Validation scripts'
-      - aws s3 cp s3://orgy-bucket/aws-landing-zone-validation.zip $current
-      - unzip -o $current/aws-landing-zone-validation.zip -d $current
   build:
     commands:
       - echo 'Executing validation tests'

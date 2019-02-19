@@ -5,7 +5,7 @@ Parameters:
     Description: GitHub repository owner
   GitHubRepo:
     Type: String
-    Default: medium-aws-check
+    Default: aws-check
     Description: GitHub repository name
   GitHubBranch:
     Type: String
@@ -54,35 +54,36 @@ Resources:
         Location: !Ref CheckPipelineArtifactS3Bucket
         Type: S3
       Stages:
-      - Name: Source
-        Actions:
         - Name: Source
-          ActionTypeId:
-            Category: Source
-            Owner: ThirdParty
-            Version: 1
-            Provider: GitHub
-          Configuration:
-            Owner: !Ref GitHubOwner
-            Repo: !Ref GitHubRepo
-            Branch: !Ref GitHubBranch
-            OAuthToken: !Ref GitHubToken
-          OutputArtifacts: [Name: Template]
-          RunOrder: 1
+          Actions:
+          - Name: Source
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub
+            Configuration:
+              Owner: !Ref GitHubOwner
+              Repo: !Ref GitHubRepo
+              Branch: !Ref GitHubBranch
+              OAuthToken: !Ref GitHubToken
+            OutputArtifacts:
+              - Name: SourceApp
+            RunOrder: 1
         - Name: Build
           Actions:
-              - Name: CodeBuild
-                InputArtifacts:
-                  - Name: SourceApp
-                ActionTypeId:
-                  Category: Build
-                  Owner: AWS
-                  Version: '1'
-                  Provider: CodeBuild
-                OutputArtifacts:
-                  - Name: BuiltApp
-                Configuration:
-                  ProjectName: !Ref CheckCodeBuild
+            - Name: CodeBuild
+              InputArtifacts:
+                - Name: SourceApp
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: BuiltApp
+              Configuration:
+                ProjectName: !Ref CheckCodeBuild
            
   CheckCodeBuild:
       Type: AWS::CodeBuild::Project
