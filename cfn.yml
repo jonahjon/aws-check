@@ -142,7 +142,7 @@ Resources:
                 Action:
                   - s3:*
                 Resource:
-                  - !Sub "arn:aws:s3:::orgy-bucket/*"
+                  - !Sub "arn:aws:s3:::${CheckPipelineArtifactS3Bucket}"
 
   CheckCodePipelineRole:
     Type: AWS::IAM::Role
