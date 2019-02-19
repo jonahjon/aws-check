@@ -104,6 +104,13 @@ Resources:
               Type: CODEPIPELINE
 
   CheckCodeBuildRole:
+  Metadata:
+    cfn_nag:
+      rules_to_suppress:
+        - id: F3
+          reason: "This is iam role with * is ok for the CF validation"
+        - id: W11
+          reason: "This is iam role with * is ok for the CF validation"
     Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
@@ -146,6 +153,13 @@ Resources:
 
   CheckCodePipelineRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F3
+            reason: "This is iam role with * is ok for the CF validation"
+          - id: W11
+            reason: "This is iam role with * is ok for the CF validation"
     Properties:
       RoleName: CheckCodePipelineRole
       AssumeRolePolicyDocument:
