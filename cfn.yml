@@ -143,12 +143,6 @@ Resources:
                   - s3:*
                 Resource:
                   - !Sub "arn:aws:s3:::orgy-bucket/*"
-              - Effect: Allow
-                Action:
-                  - ssm:GetParameter
-                  - ssm:GetParametersByPath
-                  - ssm:DescribeParameters
-                Resource: '*'
 
   CheckCodePipelineRole:
     Type: AWS::IAM::Role
@@ -185,11 +179,3 @@ Resources:
                   - "codebuild:StartBuild"
                 Resource:
                   - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${CheckCodeBuild}"
-              - Effect: "Allow"
-                Action:
-                  - codecommit:GetBranch
-                  - codecommit:GetCommit
-                  - codecommit:UploadArchive
-                  - codecommit:GetUploadArchiveStatus
-                  - codecommit:CancelUploadArchive
-                Resource: "*"
