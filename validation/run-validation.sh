@@ -18,7 +18,7 @@ for i in $(find . -type f | grep '.yml$' | sed 's/^.\///') ; do
       exit 1
     fi
     echo "Running cfn_nag_scan on $i"
-    cfn_nag_scan --input-path $deployment_dir/$i
+    cfn_nag_scan --input-path $deployment_dir/$i > report_$i.txt
     if [ $? -ne 0 ]
     then
       echo "CFN Nag failed validation - $i"

@@ -30,3 +30,6 @@ phases:
       - bash $current/validation/run-validation.sh $ARTIFACT_BUCKET
       - echo 'Installing validation tests completed `date`'
       - echo 'Source Dist completed `date`'
+artifacts:
+  files:
+    - '**/*'
