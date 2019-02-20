@@ -54,11 +54,7 @@ Resources:
           IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-      SecurityGroupIngress:
-        - CidrIp: 0.0.0.0/0
-          FromPort: 0
-          ToPort: 80
-          IpProtocol: '-1'
+      SecurityGroupIngress: []
       VpcId: !Ref VpcId
 
   Bastion:
