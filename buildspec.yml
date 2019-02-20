@@ -1,0 +1,34 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - export current=`pwd`
+      - apt-add-repository ppa:brightbox/ruby-ng
+      - apt-get update && apt-get upgrade -y
+      - apt-get install zip wget python-pip libyaml-dev ruby2.2 rsync -y
+      - which python && python --version
+      - which python3 && python3 --version
+      - which pip && pip --version
+      - pip install --upgrade pip==18.0
+      - pip install --upgrade setuptools
+      - pip install --upgrade virtualenv
+      - pip install --upgrade PyYAML
+      - pip install --upgrade yorm
+      - pip install --upgrade jinja2
+      - pip install --upgrade boto3
+      - pip install --upgrade pyyaml
+      - pip install cfn_flip
+      - pip freeze
+      - gem install cfn-nag
+  pre_build:
+    commands:
+      - cd $current
+  build:
+    commands:
+      - echo 'Executing validation tests'
+      - echo 'bash $current/validation/run-validation.sh $ARTIFACT_BUCKET'
+      - bash $current/validation/run-validation.sh $ARTIFACT_BUCKET
+      - echo 'Installing validation tests completed `date`'
+      - echo 'Source Dist completed `date`'
+artifacts:
+  files:
