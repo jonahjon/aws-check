@@ -11,7 +11,7 @@ for i in $(find . -type f | grep '.yml$' | sed 's/^.\///') ; do
     echo "Running aws cloudformation validate-template on $i"
     echo $deployment_dir/$i
     aws s3 cp $deployment_dir/$i s3://$1/validate/templates/$i
-    aws cloudformation validate-template --template-url https://s3.$AWS_REGION.amazonaws.com/$1/validate/templates/$i --region $AWS_REGION --profile jonah
+    aws cloudformation validate-template --template-url https://s3.$AWS_REGION.amazonaws.com/$1/validate/templates/$i --region $AWS_REGION
     if [ $? -ne 0 ]
     then
       echo "CloudFormation template failed validation - $i"
