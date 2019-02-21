@@ -14,7 +14,7 @@ Parameters:
   GitHubToken:
     Type: String
     NoEcho : true,
-    Description: GitHub repository OAuth token
+    Description: GitHub repository OAuth personal token
 
 Metadata:
   AWS::CloudFormation::Interface:
